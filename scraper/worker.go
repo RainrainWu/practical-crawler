@@ -4,6 +4,8 @@ import (
 	"log"
 
 	"github.com/gocolly/colly"
+
+	"practical-crawler/queue"
 )
 
 // Worker is the export interface of worker
@@ -13,6 +15,7 @@ type Worker interface {
 
 // worker describe the members of scrpaing worker
 type worker struct {
+	broker    queue.Broker
 	collector *colly.Collector
 	url       string
 }
@@ -27,6 +30,13 @@ type optionFunc func(*worker)
 func (f optionFunc) apply(c *worker) {
 
 	f(c)
+}
+
+// BrokerOption is a setter of broker member
+func BrokerOption(b queue.Broker) Option {
+	return optionFunc(func(w *worker) {
+		w.broker = b
+	})
 }
 
 // CollectorOption is a setter of collector member
@@ -51,6 +61,9 @@ func NewWorker(opts ...Option) Worker {
 	for _, opt := range opts {
 		opt.apply(instance)
 	}
+	if instance.broker == nil {
+		log.Fatal("missing broker.")
+	}
 	if instance.collector == nil {
 		instance.collector = colly.NewCollector()
 	}
@@ -61,13 +74,28 @@ func NewWorker(opts ...Option) Worker {
 func (w *worker) hook() {
 
 	w.collector.OnHTML("a[href]", func(e *colly.HTMLElement) {
-		log.Println(e.Attr("href"))
+		raw := string(e.Attr("href"))
+		if len(raw) > 1 {
+			if string(raw[0]) == "/" {
+				raw = e.Request.URL.String() + raw
+			}
+			if string(raw[len(raw)-1]) == "/" {
+				raw = raw[:len(raw)-1]
+			}
+		}
+		w.broker.Push(raw)
 	})
-	w.collector.OnRequest(func(r *colly.Request) {
-		log.Println("Visiting ", r.URL)
+	w.collector.OnScraped(func(r *colly.Response) {
+		go w.Visit()
+	})
+	w.collector.OnError(func(r *colly.Response, err error) {
+		log.Fatal(err)
 	})
 }
 
 func (w *worker) Visit() {
+
+	w.url = w.broker.Pop()
 	log.Println("Visiting ", w.url)
+	w.collector.Visit(w.url)
 }

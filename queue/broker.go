@@ -1,6 +1,11 @@
 package queue
 
-import "log"
+import (
+	"log"
+	"regexp"
+
+	"practical-crawler/config"
+)
 
 // Broker is the export interface of Broker
 type Broker interface {
@@ -10,7 +15,8 @@ type Broker interface {
 
 // broker describe the members of jobs broker
 type broker struct {
-	jobs chan string
+	jobs    chan string
+	pattern *regexp.Regexp
 }
 
 // Option is the abstract configure option
@@ -40,6 +46,13 @@ func NewBroker(opts ...Option) Broker {
 	for _, opt := range opts {
 		opt.apply(instance)
 	}
+	if instance.pattern == nil {
+		pattern, err := regexp.Compile(config.URLPattern)
+		if err != nil {
+			log.Fatal(err)
+		}
+		instance.pattern = pattern
+	}
 	if instance.jobs == nil {
 		instance.jobs = make(chan string, 256)
 	}
@@ -49,11 +62,22 @@ func NewBroker(opts ...Option) Broker {
 // Push will push a new url into jobs queue
 func (b *broker) Push(url string) {
 
-	b.jobs <- url
+	if !b.pattern.MatchString(url) {
+		log.Println("Invalid URL ", url)
+	} else {
+		select {
+		case b.jobs <- url:
+			log.Println("Pushed ", url, "Job amount ", len(b.jobs))
+		default:
+			log.Println("Channel full, discard", url)
+		}
+	}
 }
 
 // Pop will pop out a url from jobs queue
 func (b *broker) Pop() string {
 
-	return <-b.jobs
+	url := <-b.jobs
+	log.Println("Poped ", url)
+	return url
 }
