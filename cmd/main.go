@@ -21,6 +21,7 @@ func ProvideWorkers(b queue.Broker) []scraper.Worker {
 	workers := []scraper.Worker{}
 	for i := 0; i < config.WorkerAmount; i++ {
 		w := scraper.NewWorker(
+			scraper.IDOption(i),
 			scraper.BrokerOption(b),
 		)
 		workers = append(workers, w)
@@ -34,7 +35,7 @@ func register(lifecycle fx.Lifecycle, b queue.Broker, ws []scraper.Worker) {
 			OnStart: func(context.Context) error {
 				b.Push(config.RootURL)
 				for _, worker := range ws {
-					go worker.Visit()
+					go worker.Run()
 				}
 				return nil
 			},
