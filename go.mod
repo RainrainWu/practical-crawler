@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/PuerkitoBio/goquery v1.6.0 // indirect
 	github.com/antchfx/xmlquery v1.3.3 // indirect
+	github.com/deckarep/golang-set v1.7.1
 	github.com/gocolly/colly v1.2.0
 	github.com/gocolly/colly/v2 v2.1.0 // indirect
 	go.uber.org/fx v1.13.1

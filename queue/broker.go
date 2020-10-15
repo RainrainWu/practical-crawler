@@ -5,6 +5,8 @@ import (
 	"regexp"
 
 	"practical-crawler/config"
+
+	set "github.com/deckarep/golang-set"
 )
 
 // Broker is the export interface of Broker
@@ -15,8 +17,10 @@ type Broker interface {
 
 // broker describe the members of jobs broker
 type broker struct {
-	jobs    chan string
-	pattern *regexp.Regexp
+	pattern    *regexp.Regexp
+	jobs       chan string
+	accumulate int
+	history    set.Set
 }
 
 // Option is the abstract configure option
@@ -41,7 +45,9 @@ func JobsOption(c chan string) Option {
 // NewBroker instantiate a new broker
 func NewBroker(opts ...Option) Broker {
 
-	instance := &broker{}
+	instance := &broker{
+		accumulate: 0,
+	}
 	log.Println("Instantiate broker instance")
 	for _, opt := range opts {
 		opt.apply(instance)
@@ -56,6 +62,9 @@ func NewBroker(opts ...Option) Broker {
 	if instance.jobs == nil {
 		instance.jobs = make(chan string, 256)
 	}
+	if instance.history == nil {
+		instance.history = set.NewSet()
+	}
 	return instance
 }
 
@@ -63,13 +72,15 @@ func NewBroker(opts ...Option) Broker {
 func (b *broker) Push(url string) {
 
 	if !b.pattern.MatchString(url) {
-		log.Println("Invalid URL ", url)
+		log.Println("Invalid URL", url)
+	} else if b.history.Contains(url) {
+		log.Println("Duplicate URL", url)
 	} else {
 		select {
 		case b.jobs <- url:
-			log.Println("Pushed ", url, "Job amount ", len(b.jobs))
+			log.Println("Pushed", url, "Left", len(b.jobs))
 		default:
-			log.Println("Channel full, discard", url)
+			// log.Println("Channel full, discard", url)
 		}
 	}
 }
@@ -78,6 +89,8 @@ func (b *broker) Push(url string) {
 func (b *broker) Pop() string {
 
 	url := <-b.jobs
-	log.Println("Poped ", url)
+	b.history.Add(url)
+	b.accumulate++
+	log.Println("Poped", url, "Left", len(b.jobs), "Accu", b.accumulate)
 	return url
 }
