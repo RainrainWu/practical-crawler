@@ -8,9 +8,6 @@ import (
 
 const (
 
-	// RootURL indicates the url start to scrape
-	RootURL string = "https://www.sina.com.tw/"
-
 	// URLPattern indicates the regular expression of valid URL
 	URLPattern string = "^http[s]?://[a-z0-9-]+(.[a-z0-9-]+)+"
 
@@ -24,10 +21,18 @@ const (
 	WorkerTimeout int = 2
 
 	// WorkerAmount indicates the size of workers pool
-	WorkerAmount int = 64
+	WorkerAmount int = 128
 )
 
 var (
+
+	// URLSeed indicates the urls start to scrape
+	URLSeed []string = []string{
+		"https://24h.pchome.com.tw/",
+		"https://www.sina.com.tw/",
+		"https://tw.yahoo.com/",
+		"https://www.yam.com/",
+	}
 
 	// URLExcludePostfix sort out all postfix to be discard
 	URLExcludePostfix []string = []string{"jpg", "png", "pdf"}

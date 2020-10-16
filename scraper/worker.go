@@ -113,9 +113,10 @@ func normalize(url, raw string) string {
 	if string(raw[len(raw)-1]) == "/" {
 		raw = string(raw[:len(raw)-1])
 	}
-	raw = strings.Split(raw, "?")[0]
-	raw = strings.Split(raw, "@")[0]
-	raw = strings.Split(raw, "@")[0]
+
+	for _, param := range config.URLDiscardParameter {
+		raw = strings.Split(raw, param)[0]
+	}
 	return raw
 }
 
@@ -127,7 +128,7 @@ func (w *worker) Run() {
 			log.Println("Worker", w.id, "Idle")
 			go w.Visit()
 		case <-time.After(time.Duration(config.WorkerTimeout) * time.Second):
-			log.Println("Worker", w.id, "Timeout")
+			log.Println("Worker", w.id, "Timeout", w.url)
 			go w.Visit()
 		}
 	}

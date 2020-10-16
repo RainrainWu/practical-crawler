@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 	"time"
 
@@ -44,7 +45,10 @@ func register(lifecycle fx.Lifecycle, h db.Handler, b queue.Broker, ws []scraper
 	lifecycle.Append(
 		fx.Hook{
 			OnStart: func(context.Context) error {
-				b.Push(config.RootURL)
+				go timer(b)
+				for _, url := range config.URLSeed {
+					b.Push(url)
+				}
 				for _, worker := range ws {
 					go worker.Run()
 				}
@@ -57,15 +61,15 @@ func register(lifecycle fx.Lifecycle, h db.Handler, b queue.Broker, ws []scraper
 	)
 }
 
-func timer() {
+func timer(b queue.Broker) {
 	select {
-	case <-time.After(time.Duration(30) * time.Second):
+	case <-time.After(time.Duration(10) * time.Second):
+		log.Println("Left", b.GetLeft(), "Accumulate", b.GetAccumulate())
 		os.Exit(0)
 	}
 }
 
 func main() {
-	go timer()
 	fx.New(
 		fx.Provide(
 			ProvideDBHandler,

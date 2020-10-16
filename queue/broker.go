@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"log"
 	"regexp"
+	"strings"
 
 	"practical-crawler/config"
 	"practical-crawler/db"
@@ -16,6 +17,8 @@ import (
 type Broker interface {
 	Push(url string)
 	Pop() string
+	GetLeft() int
+	GetAccumulate() int
 }
 
 // broker describe the members of jobs broker
@@ -94,6 +97,8 @@ func (b *broker) Push(url string) {
 	urlHash := hex.EncodeToString(digest[:])
 	if !b.pattern.MatchString(url) {
 		log.Println("Invalid URL", url)
+	} else if excludePostfix(url) {
+		log.Println("Exclude postfix", url)
 	} else if b.cache.Contains(urlHash) {
 		log.Println("Duplicate URL", url, "conflict hash", urlHash)
 	} else if b.dbHandler.Search(urlHash) {
@@ -103,11 +108,23 @@ func (b *broker) Push(url string) {
 		case b.jobs <- url:
 			b.cache.Add(urlHash, true)
 			b.dbHandler.Push(urlHash)
-			log.Println("Pushed", url, "Left", len(b.jobs))
+			log.Println("Pushed", url)
 		default:
 			log.Println("Channel full, discard", url)
 		}
 	}
+}
+
+func excludePostfix(url string) bool {
+
+	urlSplit := strings.Split(url, ".")
+	target := urlSplit[len(urlSplit)-1]
+	for _, postfix := range config.URLExcludePostfix {
+		if postfix == target {
+			return true
+		}
+	}
+	return false
 }
 
 // Pop will pop out a url from jobs queue
@@ -115,6 +132,15 @@ func (b *broker) Pop() string {
 
 	url := <-b.jobs
 	b.accumulate++
-	log.Println("Poped", url, "Left", len(b.jobs), "Accu", b.accumulate)
 	return url
+}
+
+// GetLeft get the left amount of jobs
+func (b *broker) GetLeft() int {
+	return len(b.jobs)
+}
+
+// GetAccumulate get the accumulate amount of executed jobs
+func (b *broker) GetAccumulate() int {
+	return b.accumulate
 }
