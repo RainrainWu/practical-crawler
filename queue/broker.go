@@ -11,18 +11,21 @@ import (
 	"practical-crawler/db"
 
 	lru "github.com/hashicorp/golang-lru"
+	"go.uber.org/zap"
 )
 
 // Broker is the export interface of Broker
 type Broker interface {
 	Push(url string)
 	Pop() string
+	Accumulate()
 	GetLeft() int
 	GetAccumulate() int
 }
 
 // broker describe the members of jobs broker
 type broker struct {
+	logger     *zap.SugaredLogger
 	dbHandler  db.Handler
 	pattern    *regexp.Regexp
 	cache      *lru.Cache
@@ -40,6 +43,13 @@ type optionFunc func(*broker)
 func (f optionFunc) apply(c *broker) {
 
 	f(c)
+}
+
+// LoggerOption is a setter of logger member
+func LoggerOption(l *zap.SugaredLogger) Option {
+	return optionFunc(func(b *broker) {
+		b.logger = l
+	})
 }
 
 // DBHandlerOption is a setter of dbHandler member
@@ -62,9 +72,11 @@ func NewBroker(opts ...Option) Broker {
 	instance := &broker{
 		accumulate: 0,
 	}
-	log.Println("Instantiate broker instance")
 	for _, opt := range opts {
 		opt.apply(instance)
+	}
+	if instance.logger == nil {
+		log.Fatal("missing logger")
 	}
 	if instance.dbHandler == nil {
 		log.Fatal("missing dbHandler")
@@ -86,6 +98,7 @@ func NewBroker(opts ...Option) Broker {
 	if instance.jobs == nil {
 		instance.jobs = make(chan string, config.BrokerJobsMaximum)
 	}
+	instance.logger.Info("Instantiate broker instance")
 	return instance
 }
 
@@ -96,21 +109,21 @@ func (b *broker) Push(url string) {
 	digest := md5.Sum(data)
 	urlHash := hex.EncodeToString(digest[:])
 	if !b.pattern.MatchString(url) {
-		log.Println("Invalid URL", url)
+		// b.logger.Debugf("Invalid URL %s", url)
 	} else if excludePostfix(url) {
-		log.Println("Exclude postfix", url)
+		// b.logger.Debugf("Exclude postfix %s", url)
 	} else if b.cache.Contains(urlHash) {
-		log.Println("Duplicate URL", url, "conflict hash", urlHash)
+		// b.logger.Debugf("Duplicate URL %s", url)
 	} else if b.dbHandler.Search(urlHash) {
-		log.Println("Duplicate URL", url, "conflict hash", urlHash)
+		// b.logger.Debugf("Duplicate URL %s", url)
 	} else {
 		select {
 		case b.jobs <- url:
 			b.cache.Add(urlHash, true)
 			b.dbHandler.Push(urlHash)
-			log.Println("Pushed", url)
+			b.logger.Debugf("Pushed %s", url)
 		default:
-			log.Println("Channel full, discard", url)
+			// b.logger.Debugf("Channel full, discard %s", url)
 		}
 	}
 }
@@ -131,8 +144,11 @@ func excludePostfix(url string) bool {
 func (b *broker) Pop() string {
 
 	url := <-b.jobs
-	b.accumulate++
 	return url
+}
+
+func (b *broker) Accumulate() {
+	b.accumulate++
 }
 
 // GetLeft get the left amount of jobs
