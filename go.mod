@@ -15,6 +15,7 @@ require (
 	github.com/lib/pq v1.8.0 // indirect
 	go.uber.org/fx v1.13.1
 	go.uber.org/multierr v1.6.0 // indirect
+	go.uber.org/zap v1.16.0
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
 	golang.org/x/net v0.0.0-20201010224723-4f7140c49acb // indirect
 	golang.org/x/tools v0.0.0-20201014231627-1610a49f37af // indirect

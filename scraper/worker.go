@@ -2,13 +2,14 @@ package scraper
 
 import (
 	"log"
-	"practical-crawler/config"
 	"strings"
 	"time"
 
-	"github.com/gocolly/colly"
-
+	"practical-crawler/config"
 	"practical-crawler/queue"
+
+	"github.com/gocolly/colly"
+	"go.uber.org/zap"
 )
 
 // Worker is the export interface of worker
@@ -20,6 +21,7 @@ type Worker interface {
 // worker describe the members of scrpaing worker
 type worker struct {
 	id        int
+	logger    *zap.SugaredLogger
 	broker    queue.Broker
 	collector *colly.Collector
 	url       string
@@ -42,6 +44,13 @@ func (f optionFunc) apply(c *worker) {
 func IDOption(id int) Option {
 	return optionFunc(func(w *worker) {
 		w.id = id
+	})
+}
+
+// LoggerOption is a setter of logger member
+func LoggerOption(l *zap.SugaredLogger) Option {
+	return optionFunc(func(w *worker) {
+		w.logger = l
 	})
 }
 
@@ -70,9 +79,11 @@ func URLOption(url string) Option {
 func NewWorker(opts ...Option) Worker {
 
 	instance := &worker{}
-	log.Println("Instantiate worker instance")
 	for _, opt := range opts {
 		opt.apply(instance)
+	}
+	if instance.logger == nil {
+		log.Fatal("missing logger")
 	}
 	if instance.broker == nil {
 		log.Fatal("missing broker")
@@ -84,6 +95,7 @@ func NewWorker(opts ...Option) Worker {
 		instance.idle = make(chan bool, 1)
 	}
 	instance.hook()
+	instance.logger.Info("Instantiate worker instance")
 	return instance
 }
 
@@ -97,8 +109,11 @@ func (w *worker) hook() {
 		rawN := normalize(e.Request.URL.String(), raw)
 		w.broker.Push(rawN)
 	})
+	w.collector.OnResponse(func(r *colly.Response) {
+		w.broker.Accumulate()
+	})
 	w.collector.OnError(func(r *colly.Response, err error) {
-		log.Println("Worker", w.id, "Error", err)
+		w.logger.Warnf("[Worker %d] Error %s", w.id, err)
 	})
 }
 
@@ -125,10 +140,6 @@ func (w *worker) Run() {
 	for {
 		select {
 		case <-w.idle:
-			log.Println("Worker", w.id, "Idle")
-			go w.Visit()
-		case <-time.After(time.Duration(config.WorkerTimeout) * time.Second):
-			log.Println("Worker", w.id, "Timeout", w.url)
 			go w.Visit()
 		}
 	}
@@ -137,7 +148,7 @@ func (w *worker) Run() {
 func (w *worker) Visit() {
 
 	w.url = w.broker.Pop()
-	log.Println("Worker", w.id, "Visiting ", w.url)
+	w.logger.Debugf("[Worker %d] Visiting %s", w.id, w.url)
 	w.collector.Visit(w.url)
 	w.idle <- true
 }
