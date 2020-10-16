@@ -8,6 +8,11 @@ require (
 	github.com/deckarep/golang-set v1.7.1
 	github.com/gocolly/colly v1.2.0
 	github.com/gocolly/colly/v2 v2.1.0 // indirect
+	github.com/hashicorp/golang-lru v0.5.4
+	github.com/jinzhu/gorm v1.9.16
+	github.com/jmoiron/sqlx v1.2.0
+	github.com/joho/godotenv v1.3.0
+	github.com/lib/pq v1.8.0 // indirect
 	go.uber.org/fx v1.13.1
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b // indirect
