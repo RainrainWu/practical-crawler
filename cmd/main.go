@@ -2,17 +2,28 @@ package main
 
 import (
 	"context"
+	"os"
+	"time"
+
 	"practical-crawler/config"
+	"practical-crawler/db"
 	"practical-crawler/queue"
 	"practical-crawler/scraper"
 
 	"go.uber.org/fx"
 )
 
+// ProvideDBHandler provide a DBHandler instance
+func ProvideDBHandler() db.Handler {
+	return db.NewHandler(
+		db.DropOption(true),
+	)
+}
+
 // ProvideBroker provide a broker instance
-func ProvideBroker() queue.Broker {
+func ProvideBroker(h db.Handler) queue.Broker {
 	return queue.NewBroker(
-		queue.JobsOption(make(chan string, config.JobsMaximum)),
+		queue.DBHandlerOption(h),
 	)
 }
 
@@ -29,7 +40,7 @@ func ProvideWorkers(b queue.Broker) []scraper.Worker {
 	return workers
 }
 
-func register(lifecycle fx.Lifecycle, b queue.Broker, ws []scraper.Worker) {
+func register(lifecycle fx.Lifecycle, h db.Handler, b queue.Broker, ws []scraper.Worker) {
 	lifecycle.Append(
 		fx.Hook{
 			OnStart: func(context.Context) error {
@@ -46,9 +57,18 @@ func register(lifecycle fx.Lifecycle, b queue.Broker, ws []scraper.Worker) {
 	)
 }
 
+func timer() {
+	select {
+	case <-time.After(time.Duration(30) * time.Second):
+		os.Exit(0)
+	}
+}
+
 func main() {
+	go timer()
 	fx.New(
 		fx.Provide(
+			ProvideDBHandler,
 			ProvideBroker,
 			ProvideWorkers,
 		),

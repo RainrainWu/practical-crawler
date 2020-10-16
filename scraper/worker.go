@@ -75,7 +75,7 @@ func NewWorker(opts ...Option) Worker {
 		opt.apply(instance)
 	}
 	if instance.broker == nil {
-		log.Fatal("missing broker.")
+		log.Fatal("missing broker")
 	}
 	if instance.collector == nil {
 		instance.collector = colly.NewCollector()
@@ -113,7 +113,8 @@ func normalize(url, raw string) string {
 	if string(raw[len(raw)-1]) == "/" {
 		raw = string(raw[:len(raw)-1])
 	}
-	raw = strings.Split(raw, "#")[0]
+	raw = strings.Split(raw, "?")[0]
+	raw = strings.Split(raw, "@")[0]
 	raw = strings.Split(raw, "@")[0]
 	return raw
 }
@@ -137,6 +138,5 @@ func (w *worker) Visit() {
 	w.url = w.broker.Pop()
 	log.Println("Worker", w.id, "Visiting ", w.url)
 	w.collector.Visit(w.url)
-	log.Println("Worker", w.id, "Visited ", w.url)
 	w.idle <- true
 }
