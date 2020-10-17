@@ -18,8 +18,10 @@ import (
 type Broker interface {
 	Push(url string)
 	Pop() string
+	AddError()
 	Accumulate()
 	GetLeft() int
+	GetErrorCount() int
 	GetAccumulate() int
 }
 
@@ -30,6 +32,7 @@ type broker struct {
 	pattern    *regexp.Regexp
 	cache      *lru.Cache
 	jobs       chan string
+	errorCount int
 	accumulate int
 }
 
@@ -70,6 +73,7 @@ func JobsOption(c chan string) Option {
 func NewBroker(opts ...Option) Broker {
 
 	instance := &broker{
+		errorCount: 0,
 		accumulate: 0,
 	}
 	for _, opt := range opts {
@@ -147,6 +151,10 @@ func (b *broker) Pop() string {
 	return url
 }
 
+func (b *broker) AddError() {
+	b.errorCount++
+}
+
 func (b *broker) Accumulate() {
 	b.accumulate++
 }
@@ -154,6 +162,11 @@ func (b *broker) Accumulate() {
 // GetLeft get the left amount of jobs
 func (b *broker) GetLeft() int {
 	return len(b.jobs)
+}
+
+// GetErrorCount get the accumulate amount of encountered errors
+func (b *broker) GetErrorCount() int {
+	return b.errorCount
 }
 
 // GetAccumulate get the accumulate amount of executed jobs

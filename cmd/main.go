@@ -90,8 +90,10 @@ func timer(b queue.Broker) {
 	select {
 	case <-time.After(time.Duration(config.BenchmarkDuration) * time.Second):
 		log.Println(
+			"\n",
 			"Benchmark", config.BenchmarkDuration, "seconds\n",
 			"Left", b.GetLeft(), "jobs\n",
+			"Encounter", b.GetErrorCount(), "errors\n",
 			"Accumulate", b.GetAccumulate(), "records",
 		)
 		os.Exit(0)

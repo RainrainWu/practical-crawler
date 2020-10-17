@@ -113,6 +113,7 @@ func (w *worker) hook() {
 		w.broker.Accumulate()
 	})
 	w.collector.OnError(func(r *colly.Response, err error) {
+		w.broker.AddError()
 		w.logger.Warnf("[Worker %d] Error %s", w.id, err)
 	})
 }

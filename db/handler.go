@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"practical-crawler/config"
 
 	// postgres database driver
 	_ "github.com/jinzhu/gorm/dialects/postgres"
@@ -18,6 +19,7 @@ type Record struct {
 
 const (
 	dropSQL string = `
+	DROP INDEX IF EXISTS url_idx;
 	DROP TABLE IF EXISTS record;
 	`
 
@@ -26,6 +28,7 @@ const (
 		id INT GENERATED ALWAYS AS IDENTITY NOT NULL PRIMARY KEY,
 		url_hash VARCHAR(64) NOT NULL
 	);
+	CREATE INDEX url_idx ON record (url_hash);
 	`
 )
 
@@ -90,6 +93,7 @@ func NewHandler(opts ...Option) Handler {
 		if err != nil {
 			log.Fatal(err)
 		}
+		conn.SetMaxOpenConns(config.DBHandlerMaxConn)
 		instance.database = conn
 	}
 	instance.init()

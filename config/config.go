@@ -11,20 +11,23 @@ const (
 	// URLPattern indicates the regular expression of valid URL
 	URLPattern string = "^http[s]?://[a-z0-9-]+(.[a-z0-9-]+)+"
 
+	// DBHandlerMaxConn indicates the maximum connections to postgres db
+	DBHandlerMaxConn int = 30
+
 	// BrokerJobsMaximum indicates the maximums of queueing jobs
-	BrokerJobsMaximum int = 1024
+	BrokerJobsMaximum int = 2048
 
 	// BrokerCacheSize indicates the maximums size of broker lru cache
-	BrokerCacheSize int = 1024
+	BrokerCacheSize int = 2048
 
 	// WorkerTimeout indicate the time limit of a request
-	WorkerTimeout int = 3
+	WorkerTimeout int = 5
 
 	// WorkerAmount indicates the size of workers pool
-	WorkerAmount int = 128
+	WorkerAmount int = 512
 
 	// BenchmarkDuration indicates the time duration for benchmark
-	BenchmarkDuration int = 10
+	BenchmarkDuration int = 180
 )
 
 var (
