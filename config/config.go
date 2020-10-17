@@ -21,13 +21,13 @@ const (
 	BrokerCacheSize int = 2048
 
 	// WorkerTimeout indicate the time limit of a request
-	WorkerTimeout int = 5
+	WorkerTimeout int = 3
 
 	// WorkerAmount indicates the size of workers pool
-	WorkerAmount int = 512
+	WorkerAmount int = 128
 
 	// BenchmarkDuration indicates the time duration for benchmark
-	BenchmarkDuration int = 180
+	BenchmarkDuration int = 60
 )
 
 var (

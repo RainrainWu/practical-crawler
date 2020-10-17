@@ -30,8 +30,9 @@ func ProvideLogger() *zap.SugaredLogger {
 }
 
 // ProvideDBHandler provide a DBHandler instance
-func ProvideDBHandler() db.Handler {
+func ProvideDBHandler(l *zap.SugaredLogger) db.Handler {
 	return db.NewHandler(
+		db.LoggerOption(l),
 		db.DropOption(true),
 	)
 }
@@ -69,7 +70,7 @@ func register(
 	lifecycle.Append(
 		fx.Hook{
 			OnStart: func(context.Context) error {
-				go timer(b)
+				go timer(b, h)
 				for _, url := range config.URLSeed {
 					b.Push(url)
 				}
@@ -86,7 +87,7 @@ func register(
 	)
 }
 
-func timer(b queue.Broker) {
+func timer(b queue.Broker, h db.Handler) {
 	select {
 	case <-time.After(time.Duration(config.BenchmarkDuration) * time.Second):
 		log.Println(
@@ -94,7 +95,8 @@ func timer(b queue.Broker) {
 			"Benchmark", config.BenchmarkDuration, "seconds\n",
 			"Left", b.GetLeft(), "jobs\n",
 			"Encounter", b.GetErrorCount(), "errors\n",
-			"Accumulate", b.GetAccumulate(), "records",
+			"Recieve", b.GetAccumulate(), "responses\n",
+			"Total", h.Count(), "records",
 		)
 		os.Exit(0)
 	}

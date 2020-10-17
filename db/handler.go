@@ -9,6 +9,7 @@ import (
 	// postgres database driver
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/jmoiron/sqlx"
+	"go.uber.org/zap"
 )
 
 // Record decribe the schema of record table
@@ -26,20 +27,22 @@ const (
 	createSQL string = `
 	CREATE TABLE IF NOT EXISTS record (
 		id INT GENERATED ALWAYS AS IDENTITY NOT NULL PRIMARY KEY,
-		url_hash VARCHAR(64) NOT NULL
+		url_hash VARCHAR(64) UNIQUE
 	);
-	CREATE INDEX url_idx ON record (url_hash);
+	CREATE UNIQUE INDEX url_idx ON record (url_hash);
 	`
 )
 
 // Handler is the export interface of dbHandler
 type Handler interface {
 	init()
-	Push(urlHash string)
+	Count() int
+	Push(urlHash string) error
 	Search(urlHash string) bool
 }
 
 type handler struct {
+	logger   *zap.SugaredLogger
 	database *sqlx.DB
 	drop     bool
 }
@@ -54,6 +57,13 @@ type optionFunc func(*handler)
 func (f optionFunc) apply(db *handler) {
 
 	f(db)
+}
+
+// LoggerOption is a setter of logger member
+func LoggerOption(l *zap.SugaredLogger) Option {
+	return optionFunc(func(db *handler) {
+		db.logger = l
+	})
 }
 
 // DropOption is a setter of drop member
@@ -74,7 +84,6 @@ func DatabseOption(database *sqlx.DB) Option {
 func NewHandler(opts ...Option) Handler {
 
 	instance := &handler{}
-	log.Println("Instantiate dbHandler instance")
 	for _, opt := range opts {
 		opt.apply(instance)
 	}
@@ -108,7 +117,22 @@ func (db *handler) init() {
 	db.database.MustExec(createSQL)
 }
 
-func (db *handler) Push(urlHash string) {
+// Count return the amount of found urls
+func (db *handler) Count() int {
+
+	searchSQL := `
+	SELECT id from record
+	`
+	records := []Record{}
+	err := db.database.Select(&records, searchSQL)
+	if err != nil {
+		db.logger.Warnf("[DB Handler] %s", err)
+	}
+	return len(records)
+}
+
+// Push will insert a url into record table
+func (db *handler) Push(urlHash string) error {
 
 	pushSQL := `
 	INSERT INTO record (url_hash)
@@ -119,10 +143,16 @@ func (db *handler) Push(urlHash string) {
 	)
 	`
 	tx := db.database.MustBegin()
-	tx.MustExec(pushSQL, urlHash)
-	tx.Commit()
+	_, err := tx.Exec(pushSQL, urlHash)
+	if err != nil {
+		db.logger.Warnf("[DB Handler] %s", err)
+	} else {
+		tx.Commit()
+	}
+	return err
 }
 
+// Search will check if a urlhash is already exists
 func (db *handler) Search(urlHash string) bool {
 
 	searchSQL := `
@@ -132,7 +162,7 @@ func (db *handler) Search(urlHash string) bool {
 	records := []Record{}
 	err := db.database.Select(&records, searchSQL, urlHash)
 	if err != nil {
-		log.Fatal(err)
+		db.logger.Warnf("[DB Handler] %s", err)
 	}
 	return len(records) != 0
 }

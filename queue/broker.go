@@ -121,11 +121,13 @@ func (b *broker) Push(url string) {
 	} else if b.dbHandler.Search(urlHash) {
 		// b.logger.Debugf("Duplicate URL %s", url)
 	} else {
+		err := b.dbHandler.Push(urlHash)
+		if err == nil {
+			b.logger.Debugf("Pushed %s", url)
+		}
 		select {
 		case b.jobs <- url:
 			b.cache.Add(urlHash, true)
-			b.dbHandler.Push(urlHash)
-			b.logger.Debugf("Pushed %s", url)
 		default:
 			// b.logger.Debugf("Channel full, discard %s", url)
 		}
