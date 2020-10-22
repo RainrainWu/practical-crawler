@@ -114,25 +114,29 @@ func (b *broker) Push(url string) {
 	urlHash := hex.EncodeToString(digest[:])
 	if !b.pattern.MatchString(url) {
 		// b.logger.Debugf("Invalid URL %s", url)
-	} else if excludePostfix(url) {
-		// b.logger.Debugf("Exclude postfix %s", url)
 	} else if b.cache.Contains(urlHash) {
 		// b.logger.Debugf("Duplicate URL %s", url)
 	} else if b.dbHandler.Search(urlHash) {
 		// b.logger.Debugf("Duplicate URL %s", url)
 	} else {
+		err := b.dbHandler.Push(urlHash)
+		if err == nil {
+			b.logger.Debugf("Pushed %s", url)
+		}
+		if excludeTaskPostfix(url) {
+			// b.logger.Infof("Exclude postfix %s", url)
+			return
+		}
 		select {
 		case b.jobs <- url:
 			b.cache.Add(urlHash, true)
-			b.dbHandler.Push(urlHash)
-			b.logger.Debugf("Pushed %s", url)
 		default:
 			// b.logger.Debugf("Channel full, discard %s", url)
 		}
 	}
 }
 
-func excludePostfix(url string) bool {
+func excludeTaskPostfix(url string) bool {
 
 	urlSplit := strings.Split(url, ".")
 	target := urlSplit[len(urlSplit)-1]
