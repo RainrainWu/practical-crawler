@@ -131,7 +131,7 @@ func (b *broker) Push(url string) {
 		case b.jobs <- url:
 			b.cache.Add(urlHash, true)
 		default:
-			// b.logger.Debugf("Channel full, discard %s", url)
+			// b.logger.Infof("Channel full, discard %s", url)
 		}
 	}
 }
