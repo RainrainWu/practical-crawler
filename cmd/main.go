@@ -88,17 +88,23 @@ func register(
 }
 
 func timer(b queue.Broker, h db.Handler) {
-	select {
-	case <-time.After(time.Duration(config.BenchmarkDuration) * time.Second):
-		log.Println(
-			"\n",
-			"Benchmark", config.BenchmarkDuration, "seconds\n",
-			"Left", b.GetLeft(), "jobs\n",
-			"Encounter", b.GetErrorCount(), "errors\n",
-			"Recieve", b.GetAccumulate(), "responses\n",
-			"Total", h.Count(), "records",
-		)
-		os.Exit(0)
+	timeAccumulate := 0
+	ticker := time.NewTicker(time.Duration(config.BenchmarkInterval) * time.Second)
+	for {
+		select {
+		case <-ticker.C:
+			timeAccumulate += config.BenchmarkInterval
+			log.Println(
+				"\n----------\n",
+				"Benchmark", timeAccumulate, "seconds, Left", b.GetLeft(), "jobs\n",
+				"Encounter", b.GetErrorCount(), "errors, Recieve", b.GetAccumulate(), "responses\n",
+				"Total", h.Count(), "records",
+				"\n----------\n",
+			)
+			if timeAccumulate >= config.BenchmarkDuration {
+				os.Exit(0)
+			}
+		}
 	}
 }
 
