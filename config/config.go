@@ -11,6 +11,9 @@ const (
 	// URLPattern indicates the regular expression of valid URL
 	URLPattern string = "^http[s]?://[a-z0-9-]+(.[a-z0-9-]+)+"
 
+	// URLLevelUpperbound indicates the maximum depth of route.
+	URLLevelUpperbound int = 4
+
 	// DBHandlerMaxConn indicates the maximum connections to postgres db
 	DBHandlerMaxConn int = 100
 
@@ -21,13 +24,13 @@ const (
 	BrokerCacheSize int = 2048
 
 	// WorkerTimeout indicate the time limit of a request
-	WorkerTimeout int = 3
+	WorkerTimeout int = 2
 
 	// WorkerAmount indicates the size of workers pool
 	WorkerAmount int = 256
 
 	// BenchmarkInterval indicates the time interval for benchmark
-	BenchmarkInterval int = 20
+	BenchmarkInterval int = 5
 
 	// BenchmarkDuration indicates the time duration for benchmark
 	BenchmarkDuration int = 60

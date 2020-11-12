@@ -32,6 +32,7 @@ type broker struct {
 	pattern    *regexp.Regexp
 	cache      *lru.Cache
 	jobs       chan string
+	open       bool
 	errorCount int
 	accumulate int
 }
@@ -75,6 +76,7 @@ func NewBroker(opts ...Option) Broker {
 	instance := &broker{
 		errorCount: 0,
 		accumulate: 0,
+		open:       true,
 	}
 	for _, opt := range opts {
 		opt.apply(instance)
@@ -112,19 +114,25 @@ func (b *broker) Push(url string) {
 	data := []byte(url)
 	digest := md5.Sum(data)
 	urlHash := hex.EncodeToString(digest[:])
-	if !b.pattern.MatchString(url) {
-		// b.logger.Debugf("Invalid URL %s", url)
-	} else if b.cache.Contains(urlHash) {
+	if b.cache.Contains(urlHash) {
 		// b.logger.Debugf("Duplicate URL %s", url)
 	} else if b.dbHandler.Search(urlHash) {
 		// b.logger.Debugf("Duplicate URL %s", url)
+	} else if !b.pattern.MatchString(url) {
+		// b.logger.Debugf("Invalid URL %s", url)
 	} else {
 		err := b.dbHandler.Push(urlHash)
 		if err == nil {
-			b.logger.Debugf("Pushed %s", url)
+			// b.logger.Debugf("Pushed %s", url)
 		}
-		if excludeTaskPostfix(url) {
-			// b.logger.Infof("Exclude postfix %s", url)
+		if strings.Count(url, "/") > config.URLLevelUpperbound {
+			// b.logger.Debugf("URL %s route is too deep", url)
+			return
+		} else if strings.Contains(url, "&") {
+			// b.logger.Debugf("URL %s has too many query params", url)
+			return
+		} else if excludeTaskPostfix(url) {
+			// b.logger.Debugf("Exclude postfix %s", url)
 			return
 		}
 		select {
